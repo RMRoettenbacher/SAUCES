@@ -5,4 +5,4 @@ These codes provide a way to investigate stellar activity, and they are currentl
 
 Included 
 * A script to run all of the processes of interest.
-* A process to apply 
+* A process to apply...
