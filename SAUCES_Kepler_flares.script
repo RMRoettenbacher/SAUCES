@@ -1,0 +1,94 @@
+; SAUCES_Kepler_flares.script
+;
+; This script will run procedures for analyzing Kepler data.
+; 
+; 
+; 
+; R. Roettenbacher
+; 14 November 2018 Edits for posting to github
+; 4 January 2019 Updates for everything to be consistent
+
+; Read in the list of stars to run program on.  
+
+directoryname = '/Your/Directory/Here/'
+keplerarchive = '/Your/Kepler/Archive/Directory/Here/'
+targetlistname = 'Your_Target_List.txt'
+	; Target list format.
+	; The code is set up to have just a single column of target names.
+periodlistname = 'Your_Period_List.txt'
+	; Period list format
+	; The code is set up to have just a single column of periods (in days).
+useflatworm = 'Y'
+	; 'Y' for requiring the input necessary for using FLATW'RM.
+	; Anything else will not provide the input.
+gapsize = 0.5 ; days
+	; The size of the data gaps that are big enough to potentially cause a problem with 
+	; flare or minimum detection 
+
+; Read in the your target list. 
+READCOL, directoryname + targetlistname, targetlist, FORMAT = 'a'
+
+; Read in the list of periods.  This should be initial values or estimates.  
+READCOL, directoryname + periodlistname, periodlist, FORMAT = 'd'
+
+; Read in the list of periods again, but as a list of text
+;READCOL, '/Users/rroet/Starspots/Kepler/Flares/Kepler_flare_period_list.txt', periodlisttext, FORMAT = 'a'
+;READCOL, '/Users/rroet/Starspots/Kepler/Catalog/Kepler_flare_FFT_period_list.txt', extralist, periodlisttext, FORMAT = 'a,a'
+
+OPENW, 11, directoryname + /Kepler_flare_FFT_kepid_period_typeofstar_list.txt'
+;  For use with SAUCES_Kepler_flares_compare.pro.  This file will contain three columns.
+;  Column 1:  Star ID name 
+;  Column 2:  Period (days)
+;  Column 3:  Type of signal, as determined by FFT test 
+;             's' = FFT of light curve suggests starspots
+;             'p' = FFT of light curve suggests not starspots (labeled p for pulsations, but could also be EBs)
+
+
+; List of the folders that need to be created for all of the output.
+
+FILE_MKDIR, directoryname + 'FullLCs_CBV'
+FILE_MKDIR, directoryname + 'FullLCs_CBV_noheader'
+FILE_MKDIR, directoryname + 'FullLCs_PDC'
+FILE_MKDIR, directoryname + 'QuarterLCs_CBV'
+FILE_MKDIR, directoryname + 'QuarterLCs_PDC'
+FILE_MKDIR, directoryname + 'CBVsUsed'
+
+FILE_MKDIR, directoryname + 'FFT_Plots'
+FILE_MKDIR, directoryname + Periods_Types'
+
+FILE_MKDIR, directoryname + 'TimeofMinima_CBV'
+FILE_MKDIR, directoryname + 'FLATWRM_input'
+
+FILE_MKDIR, directoryname + 'TimeofMinima_CBV_histplots'
+
+FILE_MKDIR, directoryname + 'FLATWRM_flarepts3_output'
+
+FILE_MKDIR, directoryname + 'MissingData'
+
+FOR i = 0, N_ELEMENTS(targetlist) - 1 DO BEGIN
+	PRINT, targetlist[i], i + 1, ' of ', N_ELEMENTS(targetlist)
+
+	SAUCES_Kepler_CBV_remove, directoryname, keplerarchive, targetlist[i]
+	; Makes two light curves---one with and one with out CBVs removed
+	; but BOTH are the entire Kepler light curve
+
+	SAUCES_period_find_FFT, directoryname, targetlist[i], periodlist[i], rotperiod, typeofstar
+	; Finds the period and suggests whether the light curve is of a spotted star or not
+
+
+	SAUCES_Kepler_local_min, directoryname, targetlist[i], rotperiod[0], FLATWRM, typeofstar 
+	; Finds the minima in the light curves and makes a list
+
+	SAUCES_Kepler_min_histplots, directoryname, targetlist[i], rotperiod[0], STRTRIM(rotperiod[0],2) 
+	; Makes plots to easily interpret the minima data
+
+	SAUCES_Kepler_missing_data, directoryname, targetlist[i], gapsize
+	; finds the missing data points and returns the start and end of the gaps
+
+
+	PRINTF, 11, targetlist[i], rotperiod[0], typeofstar
+ENDFOR
+
+CLOSE, 11
+
+END 
